@@ -1,0 +1,25 @@
+[package]
+name = "thermometer"
+version = "0.1.0"
+edition = "2021"
+resolver = "2"
+
+[dependencies]
+# HAL for ESP32 (Xtensa LX6)
+esp-idf-hal = "0.46"
+esp-idf-sys = { version = "0.37", features = ["binstart"] }
+esp-idf-svc = "0.52"
+log = "0.4"
+anyhow = "1.0"
+menu = "0.6.1"
+embedded-io = "0.6.1"
+
+[build-dependencies]
+embuild = { version = "0.33", features = ["espidf"] }
+
+[[bin]]
+name = "esp32-thermometer"
+path = "src/main.rs"
+
+[profile.release]
+opt-level = "s"   # Optimiser pour la taille

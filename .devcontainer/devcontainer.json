@@ -1,0 +1,40 @@
+{
+    "name": "Rust Dev Container",
+    "dockerFile": "Dockerfile",
+    "workspaceFolder": "/workspace",
+    "privileged": true,
+    "mounts": [
+        {
+            "type": "bind",
+            "source": "${localWorkspaceFolder}",
+            "target": "/workspace"
+        }
+    ],
+    "runArgs": [
+        "--device-cgroup-rule=c 188:* rmw",
+        "--device-cgroup-rule=c 189:* rmw",
+        "-v", "/dev:/dev"
+    ],
+
+    "customizations": {
+        "vscode": {
+            "extensions": [
+                "rust-lang.rust-analyzer",
+                "vadimcn.vscode-lldb",
+                "tamasfe.even-better-toml",
+                "ms-vscode.makefile-tools"
+            ],
+            "settings": {
+                "terminal.integrated.defaultProfile.linux": "zsh"
+            }
+        }
+    },
+
+    "remoteUser": "vscode",
+
+    "features": {
+        "ghcr.io/devcontainers/features/git:1": {},
+        "ghcr.io/devcontainers/features/rust:1": {},
+        "ghcr.io/devcontainers/features/github-cli:1": {}
+    }
+}

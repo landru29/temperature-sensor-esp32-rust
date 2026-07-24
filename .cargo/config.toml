@@ -1,0 +1,23 @@
+# .cargo/config.toml
+# Cible Xtensa LX6 pour ESP32 (classic)
+# Pour ESP32-S3 (Xtensa LX7) : xtensa-esp32s3-espidf
+# Pour ESP32-C3 (RISC-V)     : riscv32imc-esp-espidf
+
+[build]
+target = "xtensa-esp32-espidf"
+
+[target.xtensa-esp32-espidf]
+linker = "ldproxy"
+# Passe les flags de build ESP-IDF
+rustflags = [
+    "-C", "link-arg=-Wl,--gc-sections",
+]
+
+[unstable]
+build-std = ["std", "panic_abort"]
+
+[env]
+# Version ESP-IDF à utiliser (peut aussi être "master" ou un tag git)
+ESP_IDF_VERSION = "v5.1.4"
+# Active la compilation de la standard library
+CARGO_UNSTABLE_BUILD_STD = "true"
