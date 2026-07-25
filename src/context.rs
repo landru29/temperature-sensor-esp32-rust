@@ -9,36 +9,59 @@ use esp_idf_svc::wifi::{
     Configuration,
     ClientConfiguration,
 };
+use embedded_io::Write;
 use esp_idf_hal::modem::Modem;
+
+use crate::uart::UartIo;
 
 const NVS_NAMESPACE: &str = "config";
 
 pub struct Nvs(pub EspNvs<NvsDefault>);
 
 pub struct Context {
-    pub counter: u32,
-    pub temperature_threshold: f32,
     pub nvs: Nvs,
     pub wifi: EspWifi<'static>,
 }
 
 impl Context {
     pub fn new(
+        interface: &mut UartIo,
         nvs_partition: EspDefaultNvsPartition,
         modem: Modem<'static>,
         sysloop: EspSystemEventLoop,
     ) -> anyhow::Result<Self> {
         let nvs = Nvs(EspNvs::new(nvs_partition, NVS_NAMESPACE, true)?);
 
-        let temperature_threshold = nvs.get_temperature_threshold();
+        let mut wifi_configuration = ClientConfiguration::default();
+
+        let mut wifi_configured = false;
+
+        nvs.get_network_configuration().map(|(ssid, password)| {
+            if let (Some(ssid), Some(password)) = (ssid, password) {
+                writeln!(interface, "Stored WiFi configuration: SSID: {}, Password: {}", ssid, password).unwrap();
+                wifi_configuration.ssid = ssid;
+                wifi_configuration.password = password;
+                wifi_configured = true;
+            } else {
+                writeln!(interface, "No stored WiFi configuration found.").unwrap();
+            }
+        }).unwrap_or_else(|e| {
+            writeln!(interface, "Error retrieving network configuration: {:?}", e).unwrap();
+        });
 
         let mut wifi = EspWifi::new(modem, sysloop, None)?;
-        wifi.set_configuration(&Configuration::Client(ClientConfiguration::default()))?;
+        wifi.set_configuration(&Configuration::Client(wifi_configuration))?;
         wifi.start()?;
 
+        if wifi_configured {
+            writeln!(interface, "Connecting to WiFi...").unwrap();
+            match wifi.connect() {
+                Ok(_) => writeln!(interface, "Connected to WiFi successfully!").unwrap(),
+                Err(e) => writeln!(interface, "Error connecting to WiFi: {:?}", e).unwrap(),
+            }
+        }
+
         Ok(Self {
-            counter: 0,
-            temperature_threshold,
             nvs,
             wifi,
         })

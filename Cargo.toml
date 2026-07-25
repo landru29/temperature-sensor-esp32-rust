@@ -13,6 +13,7 @@ log = "0.4"
 anyhow = "1.0"
 menu = "0.6.1"
 embedded-io = "0.6.1"
+heapless = "0.9.3"
 
 [build-dependencies]
 embuild = { version = "0.33", features = ["espidf"] }

@@ -1,5 +1,6 @@
 BINARY = target/xtensa-esp32-espidf/release/esp32-thermometer
 USB ?= /dev/ttyUSB0
+SOURCE_FILES = $(shell find src -name '*.rs')
 
 help:
 	@echo "Usage: make [target]"
@@ -16,7 +17,7 @@ upload: $(BINARY)
 monitor:
 	cargo +esp espflash monitor --port $(USB)
 
-$(BINARY): src/context.rs src/errors.rs src/main.rs src/temperature.rs src/uart.rs src/wifi.rs
+$(BINARY): $(SOURCE_FILES)
 	cargo +esp build --release
 
 clean:
