@@ -1,9 +1,13 @@
 use embedded_io::Write;
-use std::rc::Rc;
-use std::cell::RefCell;
-use std::convert::Infallible;
-use esp_idf_hal::uart::UartDriver;
-use esp_idf_hal::delay::BLOCK;
+use std::{
+    rc::Rc,
+    cell::RefCell,
+    convert::Infallible,
+};
+use esp_idf_hal::{
+    uart::UartDriver,
+    delay::BLOCK,
+};
 
 // The output interface: data is written to the UART through an Rc<RefCell<>>
 // shared with the read loop in `main`

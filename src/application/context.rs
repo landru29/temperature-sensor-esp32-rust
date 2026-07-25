@@ -1,34 +1,39 @@
-use esp_idf_svc::nvs::{
-    EspDefaultNvsPartition, 
-    EspNvs, 
-    NvsDefault,
-};
-use esp_idf_svc::eventloop::EspSystemEventLoop;
-use esp_idf_svc::wifi::{
-    EspWifi,
-    Configuration,
-    ClientConfiguration,
-};
 use embedded_io::Write;
 use esp_idf_hal::modem::Modem;
+use esp_idf_svc::{
+    nvs::{
+        EspDefaultNvsPartition, 
+        EspNvs, 
+        NvsDefault,
+    },
+    eventloop::EspSystemEventLoop,
+    wifi::{
+        EspWifi,
+        Configuration,
+        ClientConfiguration,
+    },
+};
 
-use crate::uart::UartIo;
+use super::uart::UartIo;
+use crate::clock::config::TimerConfiguration;
 
 const NVS_NAMESPACE: &str = "config";
 
 pub struct Nvs(pub EspNvs<NvsDefault>);
 
-pub struct Context {
+pub struct Context<'d> {
     pub nvs: Nvs,
     pub wifi: EspWifi<'static>,
+    pub timer: TimerConfiguration<'d>,
 }
 
-impl Context {
+impl<'d> Context<'d> {
     pub fn new(
         interface: &mut UartIo,
         nvs_partition: EspDefaultNvsPartition,
         modem: Modem<'static>,
         sysloop: EspSystemEventLoop,
+        timer: TimerConfiguration<'d>,
     ) -> anyhow::Result<Self> {
         let nvs = Nvs(EspNvs::new(nvs_partition, NVS_NAMESPACE, true)?);
 
@@ -64,6 +69,7 @@ impl Context {
         Ok(Self {
             nvs,
             wifi,
+            timer: timer,
         })
     }
 }

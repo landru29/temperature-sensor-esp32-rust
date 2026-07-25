@@ -1,25 +1,32 @@
-mod uart;
-mod context;
-mod errors;
+mod application;
 mod command;
+mod clock;
 
-use std::cell::RefCell;
-use std::rc::Rc;
 use menu::Runner;
-
-use esp_idf_hal::delay::BLOCK;
-use esp_idf_hal::peripherals::Peripherals;
-use esp_idf_hal::uart::config::Config;
-use esp_idf_hal::uart::UartDriver;
-use esp_idf_hal::units::Hertz;
-use esp_idf_svc::nvs::EspDefaultNvsPartition;
-use esp_idf_svc::eventloop::EspSystemEventLoop;
-
-use crate::uart::UartIo;
-use crate::context::Context;
+use std::{
+    cell::RefCell,
+    rc::Rc,
+};
+use esp_idf_hal::{
+    delay::BLOCK,
+    peripherals::Peripherals,
+    units::Hertz,
+    uart::{
+        config::Config,
+        UartDriver,
+    },
+};
+use esp_idf_svc::{
+    nvs::EspDefaultNvsPartition,
+    eventloop::EspSystemEventLoop,
+};
+use crate::application::{
+    uart::UartIo,
+    context::Context,
+};
+use crate::clock::config::TimerConfiguration;
 
 use crate::command::entry::ROOT_MENU;
-
 
 fn main() -> anyhow::Result<()> {
     esp_idf_svc::sys::link_patches();
@@ -28,6 +35,8 @@ fn main() -> anyhow::Result<()> {
     let peripherals = Peripherals::take()?;
     let nvs_partition = EspDefaultNvsPartition::take()?;
     let sysloop = EspSystemEventLoop::take()?;
+
+    let timer_config = TimerConfiguration::setup_timer()?;
 
     // UART0 = default serial console (GPIO1 = TX, GPIO3 = RX)
     let config = Config::new().baudrate(Hertz(115_200));
@@ -46,8 +55,10 @@ fn main() -> anyhow::Result<()> {
     let mut io = UartIo {
         driver: uart.clone(),
     };
-    let mut context = Context::new(&mut io, nvs_partition, peripherals.modem, sysloop)?;
+    let mut context = Context::new(&mut io, nvs_partition, peripherals.modem, sysloop, timer_config)?;
     let mut runner = Runner::new(ROOT_MENU, &mut buffer, io, &mut context);
+
+    
 
     let mut byte = [0u8; 1];
     loop {

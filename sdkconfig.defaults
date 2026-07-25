@@ -1,0 +1,3 @@
+# Use the larger single-app partition table to fit the current firmware size.
+# This expands the app partition from 1MB to 1.5MB on 4MB flash devices.
+CONFIG_PARTITION_TABLE_SINGLE_APP_LARGE=y

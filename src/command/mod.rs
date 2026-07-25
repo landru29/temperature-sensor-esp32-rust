@@ -1,3 +1,4 @@
 pub mod entry;
-pub mod temperature;
-pub mod network;
+mod temperature;
+mod network;
+mod clock;

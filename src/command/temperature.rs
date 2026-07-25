@@ -1,11 +1,13 @@
 use menu::*;
 use embedded_io::Write;
 
-use crate::errors::ApplicationError;
-use crate::uart::UartIo;
-use crate::context::{
-    Context, 
-    Nvs,
+use crate::application::{
+    errors::ApplicationError,
+    uart::UartIo,
+    context::{
+        Context,
+        Nvs,
+    },
 };
 
 const NVS_KEY_THRESHOLD: &str = "temp_thresh";
@@ -32,7 +34,7 @@ pub const TEMPERATURE_MENU: Menu<UartIo, Context> = Menu {
 };
 
 
-pub fn cmd_temperature_threshold(
+fn cmd_temperature_threshold(
     _menu: &Menu<UartIo, Context>,
     item: &Item<UartIo, Context>,
     args: &[&str],

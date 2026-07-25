@@ -1,23 +1,21 @@
+use embedded_io::Write;
+use esp_idf_svc::wifi::ClientConfiguration;
+use heapless::String;
 use menu::{
     Item,
     ItemType,
     Menu,
     Parameter,
 };
-use embedded_io::Write;
 
-use esp_idf_svc::wifi::{
-    ClientConfiguration,
+use crate::application::{
+    uart::UartIo,
+    context::{
+        Context,
+        Nvs,
+    },
 };
-
-use heapless::String;
-
-use crate::uart::UartIo;
-use crate::context::{
-    Context, 
-    Nvs,
-};
-use crate::errors::ApplicationError;
+use crate::application::errors::ApplicationError;
 
 const NVS_KEY_SSID: &str = "net_ssid";
 const NVS_KEY_PASSWORD: &str = "net_passwd";
