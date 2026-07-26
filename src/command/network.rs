@@ -65,6 +65,19 @@ pub const NETWORK_MENU: Menu<UartIo, Context> = Menu {
             command: "disconnect",
             help: Some("disconnects from the current WiFi network"),
         },
+        &Item {
+            item_type: ItemType::Callback {
+                function: cmd_network_hostname,
+                parameters: &[
+                    Parameter::Optional {
+                        parameter_name: "value",
+                        help: Some("new hostname"),
+                    },
+                ],
+            },
+            command: "hostname",
+            help: Some("displays the hostname"),
+        },
     ],
     entry: Some(enter_network_menu),
     exit: None,
@@ -200,6 +213,29 @@ fn cmd_network_disconnect(
             });
         },
         Err(e) => writeln!(interface, "Error disconnecting from WiFi: {:?}", e).unwrap(),
+    }
+}
+
+fn cmd_network_hostname(
+    _menu: &Menu<UartIo, Context>,
+    _item: &Item<UartIo, Context>,
+    args: &[&str],
+    interface: &mut UartIo,
+    context: &mut Context,
+) {
+    if args.is_empty() {
+        let hostname = context
+            .wifi
+            .sta_netif()
+            .get_hostname()
+            .unwrap_or_else(|_| {
+                let mut h = String::<30>::new();
+                h.push_str("unknown").unwrap();
+                h
+            });
+        writeln!(interface, "Current hostname: {}", hostname).unwrap();
+    } else {
+        writeln!(interface, "Setting hostname is not supported by the current netif API.").unwrap();
     }
 }
 

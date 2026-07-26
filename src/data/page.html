@@ -1,0 +1,122 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Timer et Température avec API</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            height: 100vh;
+            margin: 0;
+            background-color: #f4f4f9;
+            color: #333;
+            text-align: center;
+        }
+        .container {
+            width: 90%;
+            max-width: 400px;
+            padding: 20px;
+            background-color: white;
+            border-radius: 10px;
+            box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+        }
+        .timer {
+            font-size: 3rem;
+            margin-bottom: 20px;
+            font-weight: bold;
+        }
+        .temp-container {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            margin-top: 20px;
+        }
+        .temperature {
+            font-size: 2.5rem;
+            font-weight: bold;
+            margin-bottom: 10px;
+        }
+        .trend {
+            font-size: 1.5rem;
+            margin-top: 10px;
+        }
+        .trend.up {
+            color: #e74c3c;
+        }
+        .trend.down {
+            color: #3498db;
+        }
+        .trend.stable {
+            color: #2ecc71;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="timer" id="timer">00:00:00</div>
+        <div class="temp-container">
+            <div class="temperature" id="temperature">--°C</div>
+            <div class="trend" id="trend">--</div>
+        </div>
+    </div>
+
+    <script>
+        // Fonction pour formater le timer en hh:mm:ss
+        function formatTime(seconds) {
+            const hours = Math.floor(seconds / 3600);
+            const minutes = Math.floor((seconds % 3600) / 60);
+            const secs = seconds % 60;
+            return `${String(hours).padStart(2, '0')}:${String(minutes).padStart(2, '0')}:${String(secs).padStart(2, '0')}`;
+        }
+
+        // Fonction pour mettre à jour les données depuis l'API
+        async function fetchData() {
+            try {
+                const response = await fetch('/data');
+                if (!response.ok) {
+                    throw new Error(`Erreur HTTP: ${response.status}`);
+                }
+                const data = await response.json();
+                return data;
+            } catch (error) {
+                console.error("Erreur lors de la récupération des données:", error);
+                return null;
+            }
+        }
+
+        // Fonction pour mettre à jour l'affichage
+        async function updateDisplay() {
+            const data = await fetchData();
+            if (data) {
+                // Mise à jour du timer
+                document.getElementById('timer').textContent = formatTime(data.s);
+
+                // Mise à jour de la température
+                document.getElementById('temperature').textContent = `${data.t}°C`;
+
+                // Mise à jour de la tendance
+                const trendElement = document.getElementById('trend');
+                if (data.d > 0.1) {
+                    trendElement.textContent = '↑';
+                    trendElement.className = 'trend up';
+                } else if (data.d < -0.1) {
+                    trendElement.textContent = '↓';
+                    trendElement.className = 'trend down';
+                } else {
+                    trendElement.textContent = '→';
+                    trendElement.className = 'trend stable';
+                }
+            }
+        }
+
+        // Mise à jour toutes les secondes
+        setInterval(updateDisplay, 1000);
+        updateDisplay(); // Appel initial
+    </script>
+</body>
+</html>
