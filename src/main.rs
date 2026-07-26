@@ -1,6 +1,7 @@
 mod application;
 mod command;
 mod clock;
+mod rest;
 
 use menu::Runner;
 use std::{

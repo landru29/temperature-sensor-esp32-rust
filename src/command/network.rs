@@ -145,8 +145,7 @@ fn cmd_network_connect(
 
     match context.wifi.set_configuration(&esp_idf_svc::wifi::Configuration::Client(config)) {
         Ok(_) => {
-            writeln!(interface, "Connecting to WiFi...").unwrap();
-            match context.wifi.connect() {
+            match context.connect_wifi(interface, args[0], args[1]) {
                 Ok(_) => {
                     writeln!(interface, "Connected to WiFi successfully!").unwrap();
 
