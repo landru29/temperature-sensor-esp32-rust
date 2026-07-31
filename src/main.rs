@@ -1,6 +1,5 @@
 mod application;
 mod command;
-mod clock;
 mod rest;
 
 use menu::Runner;
@@ -24,8 +23,12 @@ use esp_idf_svc::{
 use crate::application::{
     uart::UartIo,
     context::Context,
+    network::new_wifi,
+    storage::Nvs,
+    clock::TimerConfiguration,
 };
-use crate::clock::config::TimerConfiguration;
+
+use crate::rest::rest::Server;
 
 use crate::command::entry::ROOT_MENU;
 
@@ -37,7 +40,13 @@ fn main() -> anyhow::Result<()> {
     let nvs_partition = EspDefaultNvsPartition::take()?;
     let sysloop = EspSystemEventLoop::take()?;
 
-    let timer_config = TimerConfiguration::setup_timer()?;
+
+    let storage = Nvs::new(nvs_partition.clone())?;
+    let modem = peripherals.modem;
+    new_wifi(&storage, modem, sysloop)?;
+
+    TimerConfiguration::setup_timer()?;
+    let _rest_server = Server::new()?;
 
     // UART0 = default serial console (GPIO1 = TX, GPIO3 = RX)
     let config = Config::new().baudrate(Hertz(115_200));
@@ -53,11 +62,13 @@ fn main() -> anyhow::Result<()> {
     let uart = Rc::new(RefCell::new(uart));
 
     let mut buffer = [0u8; 64];
-    let mut io = UartIo {
+    let io = UartIo {
         driver: uart.clone(),
     };
-    let mut context = Context::new(&mut io, nvs_partition, peripherals.modem, sysloop, timer_config)?;
+    // let mut context = Context::new(&mut io, nvs_partition, peripherals.modem, sysloop, timer_config)?;
+    let mut context = Context::new(storage)?;
     let mut runner = Runner::new(ROOT_MENU, &mut buffer, io, &mut context);
+
 
     
 
