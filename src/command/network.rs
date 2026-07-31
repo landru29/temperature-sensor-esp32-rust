@@ -1,24 +1,24 @@
-use embedded_io::Write;
-use esp_idf_svc::wifi::ClientConfiguration;
-use heapless::String;
 use menu::{
     Item,
     ItemType,
     Menu,
     Parameter,
 };
+use embedded_io::Write;
 
 use crate::application::{
     uart::UartIo,
-    context::{
-        Context,
-        Nvs,
+    context:: Context,
+    network::{
+        interface_str, 
+        scan_wifi, 
+        get_hostname,
+        get_current_ssid,
+        switch_wifi_network,
+        disconnect,
     },
 };
-use crate::application::errors::ApplicationError;
 
-const NVS_KEY_SSID: &str = "net_ssid";
-const NVS_KEY_PASSWORD: &str = "net_passwd";
 
 
 pub const NETWORK_MENU: Menu<UartIo, Context> = Menu {
@@ -88,11 +88,9 @@ fn enter_network_menu(
     interface: &mut UartIo,
     _context: &mut Context,
 ) {
-    let current_ssid = ClientConfiguration::default().ssid;
-    if current_ssid.is_empty() {
-        writeln!(interface, "Current SSID: <not configured>").unwrap();
-    } else {
-        writeln!(interface, "Current SSID: {}", current_ssid).unwrap();
+    match get_current_ssid() {
+        Ok(current_ssid) => writeln!(interface, "Current SSID: {}", current_ssid).unwrap(),
+        _ =>  writeln!(interface, "Current SSID: <not configured>").unwrap(),
     }
 }
 
@@ -103,19 +101,21 @@ fn cmd_network_scan(
     interface: &mut UartIo,
     context: &mut Context,
 ) {
-    match context.wifi.scan() {
-        Ok(ap_infos) => {
-            writeln!(interface, "{} network(s) found:", ap_infos.len()).unwrap();
-            for ap in ap_infos {
-                writeln!(
-                    interface,
-                    "  {:<32} RSSI:{:>4} Ch:{:>2} {:?}",
-                    ap.ssid, ap.signal_strength, ap.channel, ap.auth_method
-                )
-                .unwrap();
-            }
-        }
-        Err(e) => writeln!(interface, "Error scanning WiFi: {:?}", e).unwrap(),
+    let lst = scan_wifi();
+
+    if lst.is_empty() {
+        writeln!(interface, "no network found").unwrap();
+    }
+
+    writeln!(interface, "network(s) found: {}", lst.len()).unwrap();
+
+    for line in lst {
+        writeln!(
+            interface,
+            "  {}",
+            line
+        )
+        .unwrap();
     }
 }
 
@@ -131,33 +131,7 @@ fn cmd_network_connect(
         return;
     }
 
-    let mut ssid_string = String::new();
-    ssid_string.push_str(args[0]).unwrap();
-
-    let mut password_string = String::new();
-    password_string.push_str(args[1]).unwrap();
-
-    let config = ClientConfiguration {
-        ssid: ssid_string,
-        password: password_string,
-        ..Default::default()
-    };
-
-    match context.wifi.set_configuration(&esp_idf_svc::wifi::Configuration::Client(config)) {
-        Ok(_) => {
-            match context.connect_wifi(interface, args[0], args[1]) {
-                Ok(_) => {
-                    writeln!(interface, "Connected to WiFi successfully!").unwrap();
-
-                    context.nvs.set_network_configuration(args[0], args[1]).unwrap_or_else(|e| {
-                        writeln!(interface, "Error saving network configuration: {:?}", e).unwrap();
-                    });
-                },
-                Err(e) => writeln!(interface, "Error connecting to WiFi: {:?}", e).unwrap(),
-            }
-        },
-        Err(e) => writeln!(interface, "Error connecting to WiFi: {:?}", e).unwrap(),
-    }
+    switch_wifi_network(args[0], args[1]);
 }
 
 fn cmd_network_ip(
@@ -167,33 +141,27 @@ fn cmd_network_ip(
     interface: &mut UartIo,
     context: &mut Context,
 ) {
-    match context.wifi.sta_netif().get_ip_info() {
-        Ok(ip_info) => {
-            let ip_octets = ip_info.ip.octets();
-            writeln!(
-                interface,
-                "IP Address: {}.{}.{}.{}",
-                ip_octets[0], ip_octets[1], ip_octets[2], ip_octets[3]
-            )
-            .unwrap();
-            writeln!(
-                interface,
-                "Netmask: {}",
-                ip_info.subnet.mask
-            )
-            .unwrap();
-            let gateway_octets = ip_info.subnet.gateway.octets();
-            writeln!(
-                interface,
-                "Gateway: {}.{}.{}.{}",
-                gateway_octets[0],
-                gateway_octets[1],
-                gateway_octets[2],
-                gateway_octets[3]
-            )
-            .unwrap();
-        }
-        Err(e) => writeln!(interface, "Error getting IP info: {:?}", e).unwrap(),
+    if let Ok((ip_str, netmask_str, gateway_str)) = interface_str() {
+        writeln!(
+            interface,
+            "IP Address: {}",
+            ip_str
+        )
+        .unwrap();
+
+        writeln!(
+            interface,
+            "Netmask: {}",
+            netmask_str
+        )
+        .unwrap();
+
+        writeln!(
+            interface,
+            "Gateway: {}",
+            gateway_str
+        )
+        .unwrap();
     }
 }
 
@@ -204,13 +172,8 @@ fn cmd_network_disconnect(
     interface: &mut UartIo,
     context: &mut Context,
 ) {
-    match context.wifi.disconnect() {
-        Ok(_) => {
-            writeln!(interface, "Disconnected from WiFi successfully!").unwrap();
-            context.nvs.clear_network_configuration().unwrap_or_else(|e| {
-                writeln!(interface, "Error clearing network configuration: {:?}", e).unwrap();
-            });
-        },
+    match disconnect() {
+        Ok(_) => writeln!(interface, "Disconnected from WiFi successfully!").unwrap(),
         Err(e) => writeln!(interface, "Error disconnecting from WiFi: {:?}", e).unwrap(),
     }
 }
@@ -223,60 +186,24 @@ fn cmd_network_hostname(
     context: &mut Context,
 ) {
     if args.is_empty() {
-        let hostname = context
-            .wifi
-            .sta_netif()
-            .get_hostname()
-            .unwrap_or_else(|_| {
-                let mut h = String::<30>::new();
-                h.push_str("unknown").unwrap();
-                h
-            });
-        writeln!(interface, "Current hostname: {}", hostname).unwrap();
+        if let Ok(hostname) = get_hostname() {
+            writeln!(interface, "Current hostname: {}", hostname).unwrap();
+        } else {
+            writeln!(interface, "Error retrieving hostname").unwrap();
+        }
     } else {
-        writeln!(interface, "Setting hostname is not supported by the current netif API.").unwrap();
+        // if let Some(mutex_wifi) = WIFI.get() {
+            //     let mut wifi = mutex_wifi.lock().unwrap();
+            //     let value_str = match menu::argument_finder(item, args, "value") {
+            //         Ok(Some(v)) => {
+            //             wifi.disconnect()?;
+            //             wifi.wifi_mut().sta_netif_mut().set_hostname(value_str)?;
+            //         },
+            //         _ => {
+                        
+            //         }
+            //     };
+            // }
     }
 }
 
-impl Nvs {
-    pub fn get_network_configuration(
-        &self,
-    ) -> Result<(Option<String<32>>, Option<String<64>>), ApplicationError> {
-        let mut ssid_buf = [0u8; 32];
-        let mut password_buf = [0u8; 64];
-
-        let ssid = match self.0.get_blob(NVS_KEY_SSID, &mut ssid_buf) {
-            Ok(Some(bytes)) => core::str::from_utf8(bytes)
-                .ok()
-                .and_then(|text| {
-                    let mut s = String::<32>::new();
-                    s.push_str(text).ok().map(|_| s)
-                }),
-            _ => None,
-        };
-
-        let password = match self.0.get_blob(NVS_KEY_PASSWORD, &mut password_buf) {
-            Ok(Some(bytes)) => core::str::from_utf8(bytes)
-                .ok()
-                .and_then(|text| {
-                    let mut s = String::<64>::new();
-                    s.push_str(text).ok().map(|_| s)
-                }),
-            _ => None,
-        };
-
-        Ok((ssid, password))
-    }
-
-    pub fn set_network_configuration(&self, ssid: &str, password: &str) -> Result<(), ApplicationError> {
-        self.0.set_blob(NVS_KEY_SSID, ssid.as_bytes()).map_err(|_| ApplicationError::NetworkStoreError)?;
-        self.0.set_blob(NVS_KEY_PASSWORD, password.as_bytes()).map_err(|_| ApplicationError::NetworkStoreError)
-    }
-
-    pub fn clear_network_configuration(&self) -> Result<(), ApplicationError> {
-        self.0.remove(NVS_KEY_SSID).map_err(|_| ApplicationError::NetworkStoreError)?;
-        self.0.remove(NVS_KEY_PASSWORD).map_err(|_| ApplicationError::NetworkStoreError)?;
-
-        Ok(())
-    }
-}

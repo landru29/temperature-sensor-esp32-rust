@@ -2,15 +2,11 @@ use menu::*;
 use embedded_io::Write;
 
 use crate::application::{
-    errors::ApplicationError,
     uart::UartIo,
-    context::{
-        Context,
-        Nvs,
-    },
+    context::Context,
 };
 
-const NVS_KEY_THRESHOLD: &str = "temp_thresh";
+
 
 pub const TEMPERATURE_MENU: Menu<UartIo, Context> = Menu {
     label: "temperature",
@@ -77,21 +73,3 @@ fn cmd_temperature_threshold(
 }
 
 
-impl Nvs {
-    pub fn get_temperature_threshold(&self) -> f32 {
-        let mut buf = [0u8; 4];
-        match self.0.get_blob(NVS_KEY_THRESHOLD, &mut buf) {
-            Ok(Some(bytes)) if bytes.len() == 4 => f32::from_le_bytes(bytes.try_into().unwrap()),
-            _ => -50.0, // Default threshold if not found: a value always reached.
-        }
-    }
-
-    pub fn set_temperature_threshold(&self, value: f32) -> Result<(), ApplicationError> {
-        self.0.set_blob(NVS_KEY_THRESHOLD, &value.to_le_bytes()).map_err(|_| ApplicationError::TemperatureStoreError)
-    }
-
-    pub fn clear_temperature_threshold(&self) -> Result<(), ApplicationError> {
-        self.0.remove(NVS_KEY_THRESHOLD).map_err(|_| ApplicationError::TemperatureStoreError)?;
-        Ok(())
-    }
-}

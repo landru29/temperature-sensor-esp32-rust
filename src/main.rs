@@ -24,6 +24,8 @@ use esp_idf_svc::{
 use crate::application::{
     uart::UartIo,
     context::Context,
+    network::new_wifi,
+    storage::Nvs,
 };
 use crate::clock::config::TimerConfiguration;
 
@@ -36,6 +38,11 @@ fn main() -> anyhow::Result<()> {
     let peripherals = Peripherals::take()?;
     let nvs_partition = EspDefaultNvsPartition::take()?;
     let sysloop = EspSystemEventLoop::take()?;
+
+
+    let storage = Nvs::new(nvs_partition.clone())?;
+    let modem = peripherals.modem;
+    new_wifi(&storage, modem, sysloop)?;
 
     let timer_config = TimerConfiguration::setup_timer()?;
 
@@ -56,8 +63,10 @@ fn main() -> anyhow::Result<()> {
     let mut io = UartIo {
         driver: uart.clone(),
     };
-    let mut context = Context::new(&mut io, nvs_partition, peripherals.modem, sysloop, timer_config)?;
+    // let mut context = Context::new(&mut io, nvs_partition, peripherals.modem, sysloop, timer_config)?;
+    let mut context = Context::new(storage)?;
     let mut runner = Runner::new(ROOT_MENU, &mut buffer, io, &mut context);
+
 
     
 

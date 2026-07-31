@@ -1,5 +1,5 @@
 use menu::*;
-use embedded_io::Write;
+// use embedded_io::Write;
 
 use crate::application::{
     uart::UartIo,
@@ -41,14 +41,14 @@ fn cmd_clock_start(
     _interface: &mut UartIo,
     context: &mut Context,
 ) {
-    match context.timer.start() {
-        Ok(_) => {
-            writeln!(_interface, "Clock started.").unwrap();
-        }
-        Err(e) => {
-            writeln!(_interface, "Failed to start clock: {:?}", e).unwrap();
-        }
-    };
+    // match context.timer.start() {
+    //     Ok(_) => {
+    //         writeln!(_interface, "Clock started.").unwrap();
+    //     }
+    //     Err(e) => {
+    //         writeln!(_interface, "Failed to start clock: {:?}", e).unwrap();
+    //     }
+    // };
 }
 
 fn cmd_clock_stop(
@@ -58,13 +58,13 @@ fn cmd_clock_stop(
     _interface: &mut UartIo,
     context: &mut Context,
 ) {
-    match context.timer.stop() {
-        Ok(_) => {
-            writeln!(_interface, "Clock stopped: {:?}.", context.timer.get_counter()).unwrap();
-        }
-        Err(e) => {
-            writeln!(_interface, "Failed to stop clock: {:?}", e).unwrap();
-        }
-    }
+    // match context.timer.stop() {
+    //     Ok(_) => {
+    //         writeln!(_interface, "Clock stopped: {:?}.", context.timer.get_counter()).unwrap();
+    //     }
+    //     Err(e) => {
+    //         writeln!(_interface, "Failed to stop clock: {:?}", e).unwrap();
+    //     }
+    // }
 }
 
