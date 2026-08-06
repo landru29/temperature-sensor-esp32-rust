@@ -28,6 +28,8 @@ use crate::application::{
     clock::TimerConfiguration,
 };
 
+use crate::rest::rest::Server;
+
 use crate::command::entry::ROOT_MENU;
 
 fn main() -> anyhow::Result<()> {
@@ -44,6 +46,7 @@ fn main() -> anyhow::Result<()> {
     new_wifi(&storage, modem, sysloop)?;
 
     TimerConfiguration::setup_timer()?;
+    let _rest_server = Server::new()?;
 
     // UART0 = default serial console (GPIO1 = TX, GPIO3 = RX)
     let config = Config::new().baudrate(Hertz(115_200));
