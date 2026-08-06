@@ -1,0 +1,76 @@
+FROM debian:trixie AS builder
+
+RUN apt update && apt install -y --no-install-recommends \
+    build-essential \
+    git \
+    curl \
+    python3 \
+    python3-venv \
+    python3-sphinx python3-sphinx-rtd-theme \
+    pkg-config \
+    libglib2.0-dev \
+    libpixman-1-dev \
+    libfdt-dev \
+    ca-certificates \
+    ninja-build \
+    zlib1g-dev \
+    libslirp-dev \
+    flex \
+    bison \
+    iasl \
+    sparse \
+    libaio-dev \
+    libcurl4-openssl-dev \
+    libudev-dev \
+    libgcrypt20-dev \
+    libclang-dev clang \
+    libsdl2-dev libsdl2-image-dev libsdl2-ttf-dev \
+    cmake \
+    make
+
+RUN curl -L -o /tmp/qemu.tar.xz https://github.com/espressif/qemu/releases/download/esp-develop-9.2.2-20260417/qemu-esp_develop_9.2.2_20260417-src.tar.xz && \
+    mkdir -p /qemu && \
+    tar xf /tmp/qemu.tar.xz --strip-components=1 -C /qemu
+
+RUN curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh -s -- -y
+ENV PATH="/root/.cargo/bin:${PATH}"
+
+RUN cargo install bindgen-cli
+
+WORKDIR /qemu
+
+RUN cd /qemu && \
+    mkdir -p build && cd build && \
+    ../configure --target-list=xtensa-softmmu \
+        --enable-gcrypt \
+        --enable-slirp \
+        --enable-debug \
+        --enable-sdl \
+        --enable-sdl-image \
+        --disable-strip --disable-user \
+        --disable-capstone --disable-vnc \
+        --disable-gtk && \
+    make
+
+FROM debian:trixie
+
+RUN apt update && apt install -y --no-install-recommends \
+    libglib2.0-0 \
+    libpixman-1-0 \
+    libslirp0 \
+    libgnutls30 \
+    libfdt1 \
+    libaio1t64 \
+    libcurl4t64 \
+    libsdl2-2.0-0 libsdl2-image-2.0-0 libsdl2-ttf-2.0-0 \
+    libgcrypt20 \
+    libsndio7.0 \
+    && rm -rf /var/lib/apt/lists/*
+
+COPY --from=builder /qemu/build/qemu-system-xtensa /usr/local/bin/
+COPY --from=builder /qemu/build/pc-bios /usr/local/share/qemu
+
+
+ENTRYPOINT ["qemu-system-xtensa"]
+
+# docker run -v $(pwd)/target/xtensa-esp32-espidf/release:/dist  qemu-esp32 -nographic -machine esp32 -drive file=/dist/esp32-thermometer,if=mtd,format=raw

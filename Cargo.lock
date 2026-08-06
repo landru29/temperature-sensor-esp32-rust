@@ -1381,6 +1381,7 @@ dependencies = [
  "heapless 0.9.3",
  "log",
  "menu",
+ "serde_json",
 ]
 
 [[package]]
