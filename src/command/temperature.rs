@@ -6,8 +6,6 @@ use crate::application::{
     context::Context,
 };
 
-
-
 pub const TEMPERATURE_MENU: Menu<UartIo, Context> = Menu {
     label: "temperature",
     items: &[

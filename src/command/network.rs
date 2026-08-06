@@ -19,8 +19,6 @@ use crate::application::{
     },
 };
 
-
-
 pub const NETWORK_MENU: Menu<UartIo, Context> = Menu {
     label: "network",
     items: &[
@@ -99,7 +97,7 @@ fn cmd_network_scan(
     _item: &Item<UartIo, Context>,
     _args: &[&str],
     interface: &mut UartIo,
-    context: &mut Context,
+    _context: &mut Context,
 ) {
     let lst = scan_wifi();
 
@@ -131,7 +129,13 @@ fn cmd_network_connect(
         return;
     }
 
-    switch_wifi_network(args[0], args[1]);
+    let _ = switch_wifi_network(args[0], args[1]).or_else(|_| {
+        writeln!(interface, "Failed to connect to WiFi network.")
+    });
+
+    context.nvs.set_network_configuration(args[0], args[1]).unwrap_or_else(|e| {
+        writeln!(interface, "Failed to save network configuration: {:?}", e).unwrap();
+    });
 }
 
 fn cmd_network_ip(
@@ -139,7 +143,7 @@ fn cmd_network_ip(
     _item: &Item<UartIo, Context>,
     _args: &[&str],
     interface: &mut UartIo,
-    context: &mut Context,
+    _context: &mut Context,
 ) {
     if let Ok((ip_str, netmask_str, gateway_str)) = interface_str() {
         writeln!(
@@ -173,7 +177,12 @@ fn cmd_network_disconnect(
     context: &mut Context,
 ) {
     match disconnect() {
-        Ok(_) => writeln!(interface, "Disconnected from WiFi successfully!").unwrap(),
+        Ok(_) => {
+            writeln!(interface, "Disconnected from WiFi successfully!").unwrap();
+            context.nvs.clear_network_configuration().unwrap_or_else(|e| {
+                writeln!(interface, "Failed to clear network configuration: {:?}", e).unwrap();
+            });
+        },
         Err(e) => writeln!(interface, "Error disconnecting from WiFi: {:?}", e).unwrap(),
     }
 }
@@ -183,7 +192,7 @@ fn cmd_network_hostname(
     _item: &Item<UartIo, Context>,
     args: &[&str],
     interface: &mut UartIo,
-    context: &mut Context,
+    _context: &mut Context,
 ) {
     if args.is_empty() {
         if let Ok(hostname) = get_hostname() {

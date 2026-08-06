@@ -1,6 +1,5 @@
 mod application;
 mod command;
-mod clock;
 mod rest;
 
 use menu::Runner;
@@ -26,8 +25,8 @@ use crate::application::{
     context::Context,
     network::new_wifi,
     storage::Nvs,
+    clock::TimerConfiguration,
 };
-use crate::clock::config::TimerConfiguration;
 
 use crate::command::entry::ROOT_MENU;
 
@@ -44,7 +43,7 @@ fn main() -> anyhow::Result<()> {
     let modem = peripherals.modem;
     new_wifi(&storage, modem, sysloop)?;
 
-    let timer_config = TimerConfiguration::setup_timer()?;
+    TimerConfiguration::setup_timer()?;
 
     // UART0 = default serial console (GPIO1 = TX, GPIO3 = RX)
     let config = Config::new().baudrate(Hertz(115_200));
@@ -60,7 +59,7 @@ fn main() -> anyhow::Result<()> {
     let uart = Rc::new(RefCell::new(uart));
 
     let mut buffer = [0u8; 64];
-    let mut io = UartIo {
+    let io = UartIo {
         driver: uart.clone(),
     };
     // let mut context = Context::new(&mut io, nvs_partition, peripherals.modem, sysloop, timer_config)?;

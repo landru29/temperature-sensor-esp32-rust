@@ -6,7 +6,6 @@ use esp_idf_svc::{
     },
 };
 use heapless::String;
-use super::errors::ApplicationError;
 
 const NVS_KEY_SSID: &str = "net_ssid";
 const NVS_KEY_PASSWORD: &str = "net_passwd";
@@ -18,8 +17,6 @@ pub struct Nvs{
     pub partition: EspNvsPartition<NvsDefault>,
 }
 
-
-
 impl Nvs {
     pub fn new(nvs_partition: EspNvsPartition<NvsDefault>) -> anyhow::Result<Self> {
         let nvs = EspNvs::new(nvs_partition.clone(), NVS_NAMESPACE, true)?;
@@ -28,6 +25,18 @@ impl Nvs {
             store: nvs,
             partition: nvs_partition,
         })
+    }
+
+    pub fn set_network_configuration(&self, ssid: &str, password: &str) -> anyhow::Result<()> {
+        self.store.set_blob(NVS_KEY_SSID, ssid.as_bytes())?;
+        self.store.set_blob(NVS_KEY_PASSWORD, password.as_bytes())?;
+        Ok(())
+    }
+
+    pub fn clear_network_configuration(&self) -> anyhow::Result<()> {
+        self.store.remove(NVS_KEY_SSID)?;
+        self.store.remove(NVS_KEY_PASSWORD)?;
+        Ok(())
     }
 
     pub fn get_network_configuration(
@@ -59,18 +68,6 @@ impl Nvs {
         Ok((ssid, password))
     }
 
-    pub fn set_network_configuration(&self, ssid: &str, password: &str) -> Result<(), ApplicationError> {
-        self.store.set_blob(NVS_KEY_SSID, ssid.as_bytes()).map_err(|_| ApplicationError::NetworkStoreError)?;
-        self.store.set_blob(NVS_KEY_PASSWORD, password.as_bytes()).map_err(|_| ApplicationError::NetworkStoreError)
-    }
-
-    pub fn clear_network_configuration(&self) -> Result<(), ApplicationError> {
-        self.store.remove(NVS_KEY_SSID).map_err(|_| ApplicationError::NetworkStoreError)?;
-        self.store.remove(NVS_KEY_PASSWORD).map_err(|_| ApplicationError::NetworkStoreError)?;
-
-        Ok(())
-    }
-
     pub fn get_temperature_threshold(&self) -> f32 {
         let mut buf = [0u8; 4];
         match self.store.get_blob(NVS_KEY_THRESHOLD, &mut buf) {
@@ -79,12 +76,13 @@ impl Nvs {
         }
     }
 
-    pub fn set_temperature_threshold(&self, value: f32) -> Result<(), ApplicationError> {
-        self.store.set_blob(NVS_KEY_THRESHOLD, &value.to_le_bytes()).map_err(|_| ApplicationError::TemperatureStoreError)
+    pub fn set_temperature_threshold(&self, value: f32) -> anyhow::Result<()> {
+        self.store.set_blob(NVS_KEY_THRESHOLD, &value.to_le_bytes())?;
+        Ok(())
     }
 
-    pub fn clear_temperature_threshold(&self) -> Result<(), ApplicationError> {
-        self.store.remove(NVS_KEY_THRESHOLD).map_err(|_| ApplicationError::TemperatureStoreError)?;
+    pub fn clear_temperature_threshold(&self) -> anyhow::Result<()> {
+        self.store.remove(NVS_KEY_THRESHOLD)?;
         Ok(())
     }
 }
