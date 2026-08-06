@@ -15,6 +15,7 @@ menu = "0.6.1"
 embedded-io = "0.6.1"
 heapless = "0.9.3"
 serde_json = "1.0"
+max31865 = "0.1.1"
 
 [build-dependencies]
 embuild = { version = "0.33", features = ["espidf"] }
